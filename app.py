@@ -14,6 +14,10 @@ import time
 
 app = Flask(__name__)
 
+# Vercel serverless function
+from flask import Flask
+app = Flask(__name__)
+
 # Config
 MODEL_PATH = "sign_language_model.h5"
 DATA_DIR = r"C:\Users\adith\OneDrive\Desktop\SignLanguageDetection\Data"
@@ -177,6 +181,10 @@ def stop_camera():
 @app.route('/camera/status')
 def camera_status():
     return jsonify({'active': camera.is_active})
+
+# Vercel handler
+def handler(request):
+    return app(request.environ, lambda *args: None)
 
 if __name__ == '__main__':
     import os

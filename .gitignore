@@ -1,13 +1,26 @@
-# Ignore dataset folder
-Data/
-
-# Ignore trained model
-sign_language_model.h5
-
-# Also ignore other common large/unnecessary files
 __pycache__/
 *.pyc
-*.h5
-.env
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
 .DS_Store
-Thumbs.db
+*.h5
+Data/
+sign_env/

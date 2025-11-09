@@ -1,0 +1,17 @@
+# Vercel Deployment Commands
+
+# 1. Push to GitHub
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/yourusername/sign-language-detection.git
+git push -u origin main
+
+# 2. Deploy to Vercel (CLI)
+npm i -g vercel
+vercel login
+vercel --prod
+
+# 3. Or use Vercel website
+# Go to vercel.com -> New Project -> Import from GitHub
