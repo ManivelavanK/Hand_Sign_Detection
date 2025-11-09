@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Language Detection 🖐️</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            animation: float 6s infinite linear;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            animation: slideDown 1s ease-out;
+        }
+        
+        .header h1 {
+            font-size: 3.5rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            background: linear-gradient(45deg, #fff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            font-size: 1.3rem;
+            opacity: 0.95;
+            font-weight: 300;
+        }
+        
+        .stats-bar {
+            display: flex;
+            gap: 30px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .stat-item {
+            background: rgba(255,255,255,0.15);
+            padding: 15px 25px;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .main-container {
+            background: rgba(255,255,255,0.95);
+            border-radius: 25px;
+            padding: 40px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            max-width: 1000px;
+            width: 100%;
+            animation: slideUp 1s ease-out 0.3s both;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .video-container {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            border: 3px solid transparent;
+            background: linear-gradient(45deg, #667eea, #764ba2) border-box;
+            background-clip: padding-box;
+        }
+        
+        .video-frame {
+            position: relative;
+            background: #000;
+            border-radius: 17px;
+            overflow: hidden;
+        }
+        
+        #video-feed {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .prediction-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, rgba(0,0,0,0.9), rgba(0,0,0,0.7));
+            color: white;
+            padding: 20px 25px;
+            border-radius: 15px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .prediction-overlay:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        
+        .prediction-text {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .confidence-text {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .confidence-bar {
+            width: 100px;
+            height: 6px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        
+        .signs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 25px;
+            margin-top: 25px;
+        }
+        
+        .sign-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px 20px;
+            border-radius: 18px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .sign-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .sign-card:hover {
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+            border-color: rgba(255,255,255,0.3);
+        }
+        
+        .sign-card:hover::before {
+            left: 100%;
+        }
+        
+        .sign-card.active {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            box-shadow: 0 12px 30px rgba(76, 175, 80, 0.4);
+            transform: scale(1.1);
+        }
+        
+        .sign-emoji {
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            position: relative;
+        }
+        
+        .status-active {
+            background: #4CAF50;
+            box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+            animation: pulse-green 2s infinite;
+        }
+        
+        .status-inactive {
+            background: #f44336;
+            animation: pulse-red 2s infinite;
+        }
+        
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+        }
+        
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .info-section {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 25px;
+            border-radius: 20px;
+            margin-top: 25px;
+            border: 1px solid rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .info-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .info-section h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .instructions {
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .controls-panel {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .control-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .control-btn.camera-active {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+        }
+        
+        .control-btn.camera-active:hover {
+            box-shadow: 0 8px 20px rgba(244, 67, 54, 0.3);
+        }
+        
+        .fps-counter {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 { font-size: 2.5rem; }
+            .main-container { padding: 25px; }
+            .prediction-text { font-size: 1.3rem; }
+            .stats-bar { gap: 15px; }
+            .stat-item { padding: 12px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles"></div>
+    
+    <div class="header">
+        <h1>🖐️ Sign Language Detection</h1>
+        <p>Real-time hand gesture recognition powered by AI</p>
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-number" id="detection-count">0</span>
+                <span class="stat-label">Detections</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="accuracy-rate">0%</span>
+                <span class="stat-label">Accuracy</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="session-time">00:00</span>
+                <span class="stat-label">Session</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-container">
+        <div class="controls-panel">
+            <button class="control-btn" id="camera-btn" onclick="toggleCamera()">
+                <i class="fas fa-video" id="camera-icon"></i> <span id="camera-text">Start Camera</span>
+            </button>
+            <button class="control-btn" onclick="toggleFullscreen()">
+                <i class="fas fa-expand"></i> Fullscreen
+            </button>
+            <button class="control-btn" onclick="captureFrame()">
+                <i class="fas fa-camera"></i> Capture
+            </button>
+            <button class="control-btn" onclick="toggleStats()">
+                <i class="fas fa-chart-line"></i> Stats
+            </button>
+        </div>
+        
+        <div class="video-container">
+            <div class="video-frame">
+                <img id="video-feed" src="{{ url_for('video_feed') }}" alt="Video Feed">
+                <div class="prediction-overlay">
+                    <div class="prediction-text">
+                        <span class="status-indicator status-inactive" id="status-dot"></span>
+                        <span id="prediction-display">Starting...</span>
+                    </div>
+                    <div class="confidence-text">
+                        <span id="confidence-display">Confidence: 0%</span>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" id="confidence-bar"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="fps-counter" id="fps-counter">FPS: 0</div>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h3>
+                <span class="section-icon">📋</span>
+                Supported Signs
+            </h3>
+            <div class="signs-grid">
+                <div class="sign-card" data-sign="Hi">
+                    <span class="sign-emoji">👋</span>
+                    Hello
+                </div>
+                <div class="sign-card" data-sign="Thankyou">
+                    <span class="sign-emoji">🙏</span>
+                    Thank You
+                </div>
+                <div class="sign-card" data-sign="iloveyou">
+                    <span class="sign-emoji">❤️</span>
+                    I Love You
+                </div>
+                <div class="sign-card" data-sign="Yes">
+                    <span class="sign-emoji">✅</span>
+                    Yes
+                </div>
+                <div class="sign-card" data-sign="No">
+                    <span class="sign-emoji">❌</span>
+                    No
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h3>
+                <span class="section-icon">💡</span>
+                Instructions
+            </h3>
+            <div class="instructions">
+                • Position your hand clearly in front of the camera<br>
+                • Ensure good lighting for better detection<br>
+                • Hold the sign steady for 1-2 seconds<br>
+                • The system will show the detected sign with confidence level<br>
+                • Use fullscreen mode for better experience
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let detectionCount = 0;
+        let sessionStart = Date.now();
+        let lastFrameTime = Date.now();
+        let frameCount = 0;
+        let cameraActive = false;
+        
+        // Create floating particles
+        function createParticles() {
+            const container = document.querySelector('.particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (Math.random() * 3 + 3) + 's';
+                container.appendChild(particle);
+            }
+        }
+        
+        function updatePrediction() {
+            fetch('/prediction')
+                .then(response => response.json())
+                .then(data => {
+                    const predictionDisplay = document.getElementById('prediction-display');
+                    const confidenceDisplay = document.getElementById('confidence-display');
+                    const confidenceBar = document.getElementById('confidence-bar');
+                    const statusDot = document.getElementById('status-dot');
+                    
+                    predictionDisplay.textContent = data.prediction;
+                    confidenceDisplay.textContent = `Confidence: ${(data.confidence * 100).toFixed(0)}%`;
+                    confidenceBar.style.width = (data.confidence * 100) + '%';
+                    
+                    // Update camera status
+                    cameraActive = data.camera_active;
+                    updateCameraButton();
+                    
+                    // Update sign cards
+                    document.querySelectorAll('.sign-card').forEach(card => {
+                        card.classList.remove('active');
+                        if (card.dataset.sign === data.prediction) {
+                            card.classList.add('active');
+                        }
+                    });
+                    
+                    if (data.prediction !== 'No Hand' && data.prediction !== 'Unknown' && data.prediction !== 'Camera Off') {
+                        statusDot.className = 'status-indicator status-active';
+                        detectionCount++;
+                        document.getElementById('detection-count').textContent = detectionCount;
+                    } else {
+                        statusDot.className = 'status-indicator status-inactive';
+                    }
+                    
+                    // Update accuracy
+                    const accuracy = data.confidence > 0.7 ? Math.round(data.confidence * 100) : 0;
+                    document.getElementById('accuracy-rate').textContent = accuracy + '%';
+                    
+                    // Update FPS
+                    if (cameraActive) {
+                        frameCount++;
+                        const now = Date.now();
+                        if (now - lastFrameTime >= 1000) {
+                            document.getElementById('fps-counter').textContent = `FPS: ${frameCount}`;
+                            frameCount = 0;
+                            lastFrameTime = now;
+                        }
+                    } else {
+                        document.getElementById('fps-counter').textContent = 'FPS: 0';
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+        
+        function updateSessionTime() {
+            const elapsed = Math.floor((Date.now() - sessionStart) / 1000);
+            const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('session-time').textContent = `${minutes}:${seconds}`;
+        }
+        
+        function toggleFullscreen() {
+            const videoContainer = document.querySelector('.video-container');
+            if (!document.fullscreenElement) {
+                videoContainer.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        function captureFrame() {
+            const video = document.getElementById('video-feed');
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = video.naturalWidth;
+            canvas.height = video.naturalHeight;
+            ctx.drawImage(video, 0, 0);
+            
+            const link = document.createElement('a');
+            link.download = `sign-capture-${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        
+        function toggleStats() {
+            const statsBar = document.querySelector('.stats-bar');
+            statsBar.style.display = statsBar.style.display === 'none' ? 'flex' : 'none';
+        }
+        
+        function toggleCamera() {
+            const endpoint = cameraActive ? '/camera/stop' : '/camera/start';
+            
+            fetch(endpoint, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        cameraActive = !cameraActive;
+                        updateCameraButton();
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+        
+        function updateCameraButton() {
+            const btn = document.getElementById('camera-btn');
+            const icon = document.getElementById('camera-icon');
+            const text = document.getElementById('camera-text');
+            
+            if (cameraActive) {
+                btn.classList.add('camera-active');
+                icon.className = 'fas fa-video-slash';
+                text.textContent = 'Stop Camera';
+            } else {
+                btn.classList.remove('camera-active');
+                icon.className = 'fas fa-video';
+                text.textContent = 'Start Camera';
+            }
+        }
+        
+        // Initialize
+        createParticles();
+        setInterval(updatePrediction, 300);
+        setInterval(updateSessionTime, 1000);
+        updatePrediction();
+    </script>
+</body>
+</html>
